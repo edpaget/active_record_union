@@ -2,6 +2,16 @@ module ActiveRecord
   class Relation
     module Union
       def union(relation_or_where_arg, *args)
+        _union(Arel::Nodes::Union, relation_or_where_arg, *args)
+      end
+      
+      def union_all(relation_or_where_arg, *args)
+        _union(Arel::Nodes::UnionAll, relation_or_where_arg, *args)
+      end
+      
+      private
+      
+      def _union(union_class, relation_or_where_arg, *args)
         other   = relation_or_where_arg if args.size == 0 && Relation === relation_or_where_arg
         other ||= @klass.where(relation_or_where_arg, *args)
 
@@ -15,7 +25,7 @@ module ActiveRecord
           left, right = Arel::Nodes::Grouping.new(self.ast), Arel::Nodes::Grouping.new(other.ast)
         end
 
-        union = Arel::Nodes::Union.new(left, right)
+        union = union_class.new(left, right)
         from = Arel::Nodes::TableAlias.new(
           union,
           Arel::Nodes::SqlLiteral.new(@klass.arel_table.name)
@@ -26,7 +36,6 @@ module ActiveRecord
         relation
       end
 
-      private
 
       def verify_union_relations!(*args)
         includes_relations = args.select { |r| r.includes_values.any? }
